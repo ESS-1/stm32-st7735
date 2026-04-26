@@ -3,6 +3,7 @@
 #include "st7735.h"
 #include "malloc.h"
 #include "string.h"
+#include "st7735_config.h"
 
 #define DELAY 0x80
 
