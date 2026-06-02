@@ -179,57 +179,57 @@ void ST7735_DrawPixel(uint16_t x, uint16_t y, uint16_t color) {
 
     ST7735_Select();
 
-    ST7735_SetAddressWindow(x, y, x+1, y+1);
+    ST7735_SetAddressWindow(x, y, x, y);
     uint8_t data[] = { color >> 8, color & 0xFF };
     ST7735_WriteData(data, sizeof(data));
 
     ST7735_Unselect();
 }
 
-static void ST7735_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor) {
+static void ST7735_WriteChar(uint16_t x, uint16_t y, uint16_t height, char ch, FontDef font, uint16_t color, uint16_t bgcolor)
+{
     uint32_t i, b, j;
 
-    ST7735_SetAddressWindow(x, y, x+font.width-1, y+font.height-1);
+    if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT || height == 0) {
+        return;
+    }
 
-    for(i = 0; i < font.height; i++) {
+    if (height > font.height) {
+        height = font.height;
+    }
+
+    uint16_t width = font.width;
+    if (x + width > ST7735_WIDTH) {
+        width = ST7735_WIDTH - x;
+    }
+
+    if (y + height > ST7735_HEIGHT) {
+        height = ST7735_HEIGHT - y;
+    }
+
+    ST7735_SetAddressWindow(x, y, x+width-1, y+height-1);
+
+    for(i = 0; i < height; i++) {
         b = font.data[(ch - 32) * font.height + i];
-        for(j = 0; j < font.width; j++) {
-            if((b << j) & 0x8000)  {
-                uint8_t data[] = { color >> 8, color & 0xFF };
-                ST7735_WriteData(data, sizeof(data));
-            } else {
-                uint8_t data[] = { bgcolor >> 8, bgcolor & 0xFF };
-                ST7735_WriteData(data, sizeof(data));
-            }
+        for(j = 0; j < width; j++) {
+            uint8_t data[] = {
+                ((b << j) & 0x8000) ? (color >> 8) : (bgcolor >> 8),
+                ((b << j) & 0x8000) ? (color & 0xFF) : (bgcolor & 0xFF)
+            };
+
+            ST7735_WriteData(data, sizeof(data));
         }
     }
 }
-
-/*
-Simpler (and probably slower) implementation:
-
-static void ST7735_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t color) {
-    uint32_t i, b, j;
-
-    for(i = 0; i < font.height; i++) {
-        b = font.data[(ch - 32) * font.height + i];
-        for(j = 0; j < font.width; j++) {
-            if((b << j) & 0x8000)  {
-                ST7735_DrawPixel(x + j, y + i, color);
-            } 
-        }
-    }
-}
-*/
 
 void ST7735_WriteString(uint16_t x, uint16_t y, const char* str, FontDef font, uint16_t color, uint16_t bgcolor) {
     ST7735_Select();
 
     while(*str) {
-        if(x + font.width >= ST7735_WIDTH) {
+        if(x + font.width > ST7735_WIDTH) {
             x = 0;
             y += font.height;
-            if(y + font.height >= ST7735_HEIGHT) {
+            if(y >= ST7735_HEIGHT) {
                 break;
             }
 
@@ -240,7 +240,33 @@ void ST7735_WriteString(uint16_t x, uint16_t y, const char* str, FontDef font, u
             }
         }
 
-        ST7735_WriteChar(x, y, *str, font, color, bgcolor);
+        ST7735_WriteChar(x, y, font.height, *str, font, color, bgcolor);
+        x += font.width;
+        str++;
+    }
+
+    ST7735_Unselect();
+}
+
+void ST7735_WriteStringNoWrap(uint16_t x, uint16_t y, uint16_t max_height, const char* str, FontDef font, uint16_t color, uint16_t bgcolor)
+{
+    if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT || max_height == 0) {
+        return;
+    }
+
+    ST7735_Select();
+
+    uint16_t height = font.height;
+    if (height > max_height) {
+        height = max_height;
+    }
+
+    while(*str) {
+        if(x >= ST7735_WIDTH) {
+            break;
+        }
+
+        ST7735_WriteChar(x, y, height, *str, font, color, bgcolor);
         x += font.width;
         str++;
     }
