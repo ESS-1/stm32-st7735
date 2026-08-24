@@ -209,6 +209,11 @@ static void ST7735_WriteChar(uint16_t x, uint16_t y, uint16_t height, char ch, F
 
     ST7735_SetAddressWindow(x, y, x+width-1, y+height-1);
 
+	// Replace non-printable characters with a placeholder
+    if (ch < ' ' || ch > '~') {
+        ch = '?';
+	}
+
     for(i = 0; i < height; i++) {
         b = font.data[(ch - 32) * font.height + i];
         for(j = 0; j < width; j++) {
