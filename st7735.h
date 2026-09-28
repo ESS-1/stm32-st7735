@@ -85,6 +85,8 @@ typedef enum {
 
 } ImageFormat;
 
+extern const uint8_t st7735_default_init_cmds[];
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -92,7 +94,10 @@ extern "C" {
 // call before initializing any SPI devices
 void ST7735_Unselect();
 
+void ST7735_ExecuteCommand(uint8_t cmd, uint8_t* data, uint8_t data_size);
+void ST7735_ExecuteCommandList(const uint8_t* addr);
 void ST7735_Init(void);
+void ST7735_EnableDisplay(bool enable);
 void ST7735_DrawPixel(uint16_t x, uint16_t y, uint16_t color);
 void ST7735_WriteString(uint16_t x, uint16_t y, const char* str, FontDef font, uint16_t color, uint16_t bgcolor);
 void ST7735_WriteStringNoWrap(uint16_t x, uint16_t y, uint16_t max_height, const char* str, FontDef font, uint16_t color, uint16_t bgcolor);
