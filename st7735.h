@@ -4,6 +4,7 @@
 
 #include "fonts.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 #define ST7735_MADCTL_MY  0x80
 #define ST7735_MADCTL_MX  0x40
@@ -79,6 +80,11 @@ typedef enum {
 	GAMMA_18 = 0x08
 } GammaDef;
 
+typedef enum {
+	ImageFormat_Grayscale4Rle4
+
+} ImageFormat;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -95,6 +101,7 @@ void ST7735_FillRectangleFast(uint16_t x, uint16_t y, uint16_t w, uint16_t h, ui
 void ST7735_FillScreen(uint16_t color);
 void ST7735_FillScreenFast(uint16_t color);
 void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data);
+void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, ImageFormat format, const uint8_t* data, size_t data_size);
 void ST7735_InvertColors(bool invert);
 void ST7735_SetGamma(GammaDef gamma);
 

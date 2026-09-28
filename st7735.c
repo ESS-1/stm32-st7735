@@ -97,6 +97,24 @@ static const uint8_t
       10,                     //     10 ms delay
     ST7735_DISPON ,    DELAY, //  4: Main screen turn on, no args w/delay
       100 };                  //     100 ms delay
+static const uint16_t palette_grayscale16[16] = {
+    ST7735_COLOR565(0, 0, 0),
+    ST7735_COLOR565(17, 17, 17),
+    ST7735_COLOR565(34, 34, 34),
+    ST7735_COLOR565(51, 51, 51),
+    ST7735_COLOR565(68, 68, 68),
+    ST7735_COLOR565(85, 85, 85),
+    ST7735_COLOR565(102, 102, 102),
+    ST7735_COLOR565(119, 119, 119),
+    ST7735_COLOR565(136, 136, 136),
+    ST7735_COLOR565(153, 153, 153),
+    ST7735_COLOR565(170, 170, 170),
+    ST7735_COLOR565(187, 187, 187),
+    ST7735_COLOR565(204, 204, 204),
+    ST7735_COLOR565(221, 221, 221),
+    ST7735_COLOR565(238, 238, 238),
+    ST7735_COLOR565(255, 255, 255) };
+
 
 static void ST7735_Select() {
     HAL_GPIO_WritePin(ST7735_CS_GPIO_Port, ST7735_CS_Pin, GPIO_PIN_RESET);
@@ -338,6 +356,41 @@ void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint
     ST7735_Select();
     ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
     ST7735_WriteData((uint8_t*)data, sizeof(uint16_t)*w*h);
+    ST7735_Unselect();
+}
+
+void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, ImageFormat format, const uint8_t* data, size_t data_size) {
+    if((x >= ST7735_WIDTH) || (y >= ST7735_HEIGHT)) return;
+    if((x + w - 1) >= ST7735_WIDTH) return;
+    if((y + h - 1) >= ST7735_HEIGHT) return;
+
+    ST7735_Select();
+    ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
+
+    if (format == ImageFormat_Grayscale4Rle4) {
+        const size_t buf_size = 32;
+        uint16_t     buf[buf_size];
+        size_t       buf_pos = 0;
+
+        for (size_t i = 0; i < data_size; ++i) {
+            uint16_t color = palette_grayscale16[data[i] & 0x0F];
+            size_t count = (data[i] >> 4) + 1;
+
+            while (count--) {
+                buf[buf_pos++] = color;
+
+                if (buf_pos >= buf_size) {
+                    ST7735_WriteData((uint8_t*)buf, sizeof(buf));
+                    buf_pos = 0;
+                }
+            }
+        }
+
+        if (buf_pos > 0) {
+            ST7735_WriteData((uint8_t*)buf, buf_pos * sizeof(buf[0]));
+        }
+    }
+
     ST7735_Unselect();
 }
 
