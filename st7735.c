@@ -10,7 +10,7 @@
 
 // based on Adafruit ST7735 library for Arduino
 const uint8_t st7735_default_init_cmds[] = {
-    19,                       // 15 commands in list:
+    19,                       // 19 commands in list:
     ST7735_SWRESET,   DELAY,  //  1: Software reset, 0 args, w/delay
       150,                    //     150 ms delay
     ST7735_SLPOUT ,   DELAY,  //  2: Out of sleep mode, 0 args, w/delay
