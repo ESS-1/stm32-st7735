@@ -127,8 +127,8 @@ void ST7735_ExecuteCommandList(const uint8_t *addr) {
 
         numArgs = *addr++;
         // If high bit set, delay follows args
-        ms = numArgs & DELAY;
-        numArgs &= ~DELAY;
+        ms = numArgs & ST7735_DELAY;
+        numArgs &= ~ST7735_DELAY;
         if(numArgs) {
             ST7735_WriteData((uint8_t*)addr, numArgs);
             addr += numArgs;
