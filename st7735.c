@@ -171,7 +171,7 @@ void ST7735_Init() {
 void ST7735_EnableDisplay(bool enable)
 {
     ST7735_Select();
-    ST7735_WriteCommand(ST7735_DISPON);
+    ST7735_WriteCommand(enable ? ST7735_DISPON : ST7735_DISPOFF);
     ST7735_Unselect();
 }
 
