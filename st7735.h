@@ -73,6 +73,8 @@
 #define ST7735_WHITE   0xFFFF
 #define ST7735_COLOR565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3))
 
+#define ST7735_DELAY   0x80
+
 typedef enum {
 	GAMMA_10 = 0x01,
 	GAMMA_25 = 0x02,
@@ -81,8 +83,8 @@ typedef enum {
 } GammaDef;
 
 typedef enum {
-	ImageFormat_Grayscale4Rle4
-
+	ImageFormat_Raw16,
+	ImageFormat_Grayscale4Rle4,
 } ImageFormat;
 
 extern const uint8_t st7735_default_init_cmds[];

@@ -6,62 +6,60 @@
 #include "string.h"
 #include "st7735_config.h"
 
-#define DELAY 0x80
-
 // based on Adafruit ST7735 library for Arduino
 const uint8_t st7735_default_init_cmds[] = {
-    19,                       // 19 commands in list:
-    ST7735_SWRESET,   DELAY,  //  1: Software reset, 0 args, w/delay
-      150,                    //     150 ms delay
-    ST7735_SLPOUT ,   DELAY,  //  2: Out of sleep mode, 0 args, w/delay
-      255,                    //     500 ms delay
-    ST7735_FRMCTR1, 3      ,  //  3: Frame rate ctrl - normal mode, 3 args:
-      0x01, 0x2C, 0x2D,       //     Rate = fosc/(1x2+40) * (LINE+2C+2D)
-    ST7735_FRMCTR2, 3      ,  //  4: Frame rate control - idle mode, 3 args:
-      0x01, 0x2C, 0x2D,       //     Rate = fosc/(1x2+40) * (LINE+2C+2D)
-    ST7735_FRMCTR3, 6      ,  //  5: Frame rate ctrl - partial mode, 6 args:
-      0x01, 0x2C, 0x2D,       //     Dot inversion mode
-      0x01, 0x2C, 0x2D,       //     Line inversion mode
-    ST7735_INVCTR , 1      ,  //  6: Display inversion ctrl, 1 arg, no delay:
-      0x07,                   //     Column inversion
-    ST7735_PWCTR1 , 3      ,  //  7: Power control, 3 args, no delay:
-      0xA2,                   //     AVDD = 5V; GVDD = 4.6V
-      0x02,                   //     GVCL = -4.6V
-      0x84,                   //     AUTO mode
-    ST7735_PWCTR2 , 1      ,  //  8: Power control, 1 arg, no delay:
-      0xC5,                   //     VGH25 = 2.4; VGSEL = -10; VGH = 3*AVDD-0.5
-    ST7735_PWCTR3 , 2      ,  //  9: Power control, 2 args, no delay:
-      0x0A,                   //     Opamp current small
-      0x00,                   //     Boost frequency
-    ST7735_PWCTR4 , 2      ,  // 10: Power control, 2 args, no delay:
-      0x8A,                   //     BCLK/2, Opamp current small & Medium low
-      0x2A,  
-    ST7735_PWCTR5 , 2      ,  // 11: Power control, 2 args, no delay:
+    19,                           // 19 commands in list:
+    ST7735_SWRESET, ST7735_DELAY, //  1: Software reset, 0 args, w/delay
+      150,                        //     150 ms delay
+    ST7735_SLPOUT , ST7735_DELAY, //  2: Out of sleep mode, 0 args, w/delay
+      255,                        //     500 ms delay
+    ST7735_FRMCTR1, 3      ,      //  3: Frame rate ctrl - normal mode, 3 args:
+      0x01, 0x2C, 0x2D,           //     Rate = fosc/(1x2+40) * (LINE+2C+2D)
+    ST7735_FRMCTR2, 3      ,      //  4: Frame rate control - idle mode, 3 args:
+      0x01, 0x2C, 0x2D,           //     Rate = fosc/(1x2+40) * (LINE+2C+2D)
+    ST7735_FRMCTR3, 6      ,      //  5: Frame rate ctrl - partial mode, 6 args:
+      0x01, 0x2C, 0x2D,           //     Dot inversion mode
+      0x01, 0x2C, 0x2D,           //     Line inversion mode
+    ST7735_INVCTR , 1      ,      //  6: Display inversion ctrl, 1 arg, no delay:
+      0x07,                       //     Column inversion
+    ST7735_PWCTR1 , 3      ,      //  7: Power control, 3 args, no delay:
+      0xA2,                       //     AVDD = 5V; GVDD = 4.6V
+      0x02,                       //     GVCL = -4.6V
+      0x84,                       //     AUTO mode
+    ST7735_PWCTR2 , 1      ,      //  8: Power control, 1 arg, no delay:
+      0xC5,                       //     VGH25 = 2.4; VGSEL = -10; VGH = 3*AVDD-0.5
+    ST7735_PWCTR3 , 2      ,      //  9: Power control, 2 args, no delay:
+      0x0A,                       //     Opamp current small
+      0x00,                       //     Boost frequency
+    ST7735_PWCTR4 , 2      ,      // 10: Power control, 2 args, no delay:
+      0x8A,                       //     BCLK/2, Opamp current small & Medium low
+      0x2A,
+    ST7735_PWCTR5 , 2      ,      // 11: Power control, 2 args, no delay:
       0x8A, 0xEE,
-    ST7735_VMCTR1 , 1      ,  // 12: Power control, 1 arg, no delay:
-      0x0E,                   //     VCOM = -0.775V
-    ST7735_INVOFF , 0      ,  // 13: Don't invert display, no args, no delay
-    ST7735_MADCTL , 1      ,  // 14: Memory access control (directions), 1 arg:
-      ST7735_ROTATION,        //     row addr/col addr, bottom to top refresh
-    ST7735_COLMOD , 1      ,  // 15: set color mode, 1 arg, no delay:
-      0x05,                   //     16-bit color
+    ST7735_VMCTR1 , 1      ,      // 12: Power control, 1 arg, no delay:
+      0x0E,                       //     VCOM = -0.775V
+    ST7735_INVOFF , 0      ,      // 13: Don't invert display, no args, no delay
+    ST7735_MADCTL , 1      ,      // 14: Memory access control (directions), 1 arg:
+      ST7735_ROTATION,            //     row addr/col addr, bottom to top refresh
+    ST7735_COLMOD , 1      ,      // 15: set color mode, 1 arg, no delay:
+      0x05,                       //     16-bit color
 #ifdef ST7735_INVERT_COLORS
-    ST7735_INVON  , 0     ,   // 16: Invert display
+    ST7735_INVON  , 0     ,       // 16: Invert display
 #else
-    ST7735_NOP    , 0     ,   // 16: No operation
+    ST7735_NOP    , 0     ,       // 16: No operation
 #endif
-    ST7735_GMCTRP1, 16      , // 17: Gamma Adjustments (pos. polarity), 16 args, no delay:
+    ST7735_GMCTRP1, 16      ,     // 17: Gamma Adjustments (pos. polarity), 16 args, no delay:
       0x02, 0x1c, 0x07, 0x12,
       0x37, 0x32, 0x29, 0x2d,
       0x29, 0x25, 0x2B, 0x39,
       0x00, 0x01, 0x03, 0x10,
-    ST7735_GMCTRN1, 16      , // 18: Gamma Adjustments (neg. polarity), 16 args, no delay:
+    ST7735_GMCTRN1, 16      ,     // 18: Gamma Adjustments (neg. polarity), 16 args, no delay:
       0x03, 0x1d, 0x07, 0x06,
       0x2E, 0x2C, 0x29, 0x2D,
       0x2E, 0x2E, 0x37, 0x3F,
       0x00, 0x00, 0x02, 0x10,
-    ST7735_NORON  ,    DELAY, // 19: Normal display on, no args, w/delay
-      10 };                   //     10 ms delay
+    ST7735_NORON  , ST7735_DELAY, // 19: Normal display on, no args, w/delay
+      10 };                       //     10 ms delay
 
 static const uint16_t palette_grayscale16[16] = {
     ST7735_COLOR565(0, 0, 0),
@@ -333,14 +331,7 @@ void ST7735_FillScreenFast(uint16_t color) {
 }
 
 void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data) {
-    if((x >= ST7735_WIDTH) || (y >= ST7735_HEIGHT)) return;
-    if((x + w - 1) >= ST7735_WIDTH) return;
-    if((y + h - 1) >= ST7735_HEIGHT) return;
-
-    ST7735_Select();
-    ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
-    ST7735_WriteData((uint8_t*)data, sizeof(uint16_t)*w*h);
-    ST7735_Unselect();
+    ST7735_DrawCompressedImage(x, y, w, h, ImageFormat_Raw16, (const uint8_t*)data, sizeof(uint16_t) * w * h);
 }
 
 void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, ImageFormat format, const uint8_t* data, size_t data_size) {
@@ -351,7 +342,9 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
     ST7735_Select();
     ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
 
-    if (format == ImageFormat_Grayscale4Rle4) {
+    if (format == ImageFormat_Raw16) {
+        ST7735_WriteData((uint8_t*)data, data_size);
+    } else if (format == ImageFormat_Grayscale4Rle4) {
         const size_t buf_size = 32;
         uint16_t     buf[buf_size];
         size_t       buf_pos = 0;
