@@ -25,7 +25,7 @@ def convert(filename):
 
     pixels = []
 
-    for r, g, b in image.getdata():
+    for r, g, b in image.get_flattened_data():
         pixels.append(rgb_to_gray16(r, g, b))
 
     # RLE
