@@ -61,23 +61,34 @@ const uint8_t st7735_default_init_cmds[] = {
     ST7735_NORON  , ST7735_DELAY, // 19: Normal display on, no args, w/delay
       10 };                       //     10 ms delay
 
+
+#define SWAP16(val) (uint16_t)((((uint16_t)(val) & 0x00FFU) << 8) | \
+                               (((uint16_t)(val) & 0xFF00U) >> 8))
+
+// Grayscale palettes in big-endian byte order
 static const uint16_t palette_grayscale16[16] = {
-    ST7735_COLOR565(0, 0, 0),
-    ST7735_COLOR565(17, 17, 17),
-    ST7735_COLOR565(34, 34, 34),
-    ST7735_COLOR565(51, 51, 51),
-    ST7735_COLOR565(68, 68, 68),
-    ST7735_COLOR565(85, 85, 85),
-    ST7735_COLOR565(102, 102, 102),
-    ST7735_COLOR565(119, 119, 119),
-    ST7735_COLOR565(136, 136, 136),
-    ST7735_COLOR565(153, 153, 153),
-    ST7735_COLOR565(170, 170, 170),
-    ST7735_COLOR565(187, 187, 187),
-    ST7735_COLOR565(204, 204, 204),
-    ST7735_COLOR565(221, 221, 221),
-    ST7735_COLOR565(238, 238, 238),
-    ST7735_COLOR565(255, 255, 255) };
+    SWAP16(ST7735_COLOR565(0,   0,   0  )),
+    SWAP16(ST7735_COLOR565(17,  17,  17 )),
+    SWAP16(ST7735_COLOR565(34,  34,  34 )),
+    SWAP16(ST7735_COLOR565(51,  51,  51 )),
+    SWAP16(ST7735_COLOR565(68,  68,  68 )),
+    SWAP16(ST7735_COLOR565(85,  85,  85 )),
+    SWAP16(ST7735_COLOR565(102, 102, 102)),
+    SWAP16(ST7735_COLOR565(119, 119, 119)),
+    SWAP16(ST7735_COLOR565(136, 136, 136)),
+    SWAP16(ST7735_COLOR565(153, 153, 153)),
+    SWAP16(ST7735_COLOR565(170, 170, 170)),
+    SWAP16(ST7735_COLOR565(187, 187, 187)),
+    SWAP16(ST7735_COLOR565(204, 204, 204)),
+    SWAP16(ST7735_COLOR565(221, 221, 221)),
+    SWAP16(ST7735_COLOR565(238, 238, 238)),
+    SWAP16(ST7735_COLOR565(255, 255, 255)),
+};
+
+static const uint16_t palette_grayscale2[2] = {
+    SWAP16(ST7735_COLOR565(0,   0,   0  )),
+    SWAP16(ST7735_COLOR565(255, 255, 255)),
+};
 
 
 static void ST7735_Select() {
@@ -350,26 +361,31 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
         case ImageFormat_Grayscale4Rle4:
         case ImageFormat_Grayscale1Rle7:
         {
+            const uint16_t* palette;
+            uint8_t color_mask;
+            uint8_t count_shift;
+
+            if (format == ImageFormat_Grayscale4Rle4) {
+                palette     = palette_grayscale16;
+                color_mask  = 0x0F;
+                count_shift = 4;
+            } else {
+                palette     = palette_grayscale2;
+                color_mask  = 0x01;
+                count_shift = 1;
+            }
+
             const size_t buf_size = 32;
             uint16_t     buf[buf_size];
             size_t       buf_pos = 0;
 
             for (size_t i = 0; i < data_size; ++i) {
-                uint16_t color;
-                size_t count;
-
-                if (format == ImageFormat_Grayscale4Rle4) {
-                    color = palette_grayscale16[data[i] & 0x0F];
-                    count = (data[i] >> 4) + 1;
-                }
-                else {// format == ImageFormat_Grayscale1Rle7
-                    color = (data[i] & 0x01) ? ST7735_WHITE : ST7735_BLACK;
-                    count = (data[i] >> 1) + 1;
-                }
+                uint8_t  b     = data[i];
+                uint16_t color = palette[b & color_mask];
+                size_t   count = (b >> count_shift) + 1;
 
                 while (count--) {
                     buf[buf_pos++] = color;
-
                     if (buf_pos >= buf_size) {
                         ST7735_WriteData((uint8_t*)buf, sizeof(buf));
                         buf_pos = 0;
@@ -380,7 +396,12 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
             if (buf_pos > 0) {
                 ST7735_WriteData((uint8_t*)buf, buf_pos * sizeof(buf[0]));
             }
+            break;
         }
+
+        default:
+            // Invalid image format
+            break;
     }
 
     ST7735_Unselect();
