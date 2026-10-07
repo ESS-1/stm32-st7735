@@ -342,29 +342,44 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
     ST7735_Select();
     ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
 
-    if (format == ImageFormat_Raw16) {
-        ST7735_WriteData((uint8_t*)data, data_size);
-    } else if (format == ImageFormat_Grayscale4Rle4) {
-        const size_t buf_size = 32;
-        uint16_t     buf[buf_size];
-        size_t       buf_pos = 0;
+    switch (format) {
+        case ImageFormat_Raw16:
+            ST7735_WriteData((uint8_t*)data, data_size);
+            break;
 
-        for (size_t i = 0; i < data_size; ++i) {
-            uint16_t color = palette_grayscale16[data[i] & 0x0F];
-            size_t count = (data[i] >> 4) + 1;
+        case ImageFormat_Grayscale4Rle4:
+        case ImageFormat_Grayscale1Rle7:
+        {
+            const size_t buf_size = 32;
+            uint16_t     buf[buf_size];
+            size_t       buf_pos = 0;
 
-            while (count--) {
-                buf[buf_pos++] = color;
+            for (size_t i = 0; i < data_size; ++i) {
+                uint16_t color;
+                size_t count;
 
-                if (buf_pos >= buf_size) {
-                    ST7735_WriteData((uint8_t*)buf, sizeof(buf));
-                    buf_pos = 0;
+                if (format == ImageFormat_Grayscale4Rle4) {
+                    color = palette_grayscale16[data[i] & 0x0F];
+                    count = (data[i] >> 4) + 1;
+                }
+                else {// format == ImageFormat_Grayscale1Rle7
+                    color = (data[i] & 0x01) ? ST7735_WHITE : ST7735_BLACK;
+                    count = (data[i] >> 1) + 1;
+                }
+
+                while (count--) {
+                    buf[buf_pos++] = color;
+
+                    if (buf_pos >= buf_size) {
+                        ST7735_WriteData((uint8_t*)buf, sizeof(buf));
+                        buf_pos = 0;
+                    }
                 }
             }
-        }
 
-        if (buf_pos > 0) {
-            ST7735_WriteData((uint8_t*)buf, buf_pos * sizeof(buf[0]));
+            if (buf_pos > 0) {
+                ST7735_WriteData((uint8_t*)buf, buf_pos * sizeof(buf[0]));
+            }
         }
     }
 
