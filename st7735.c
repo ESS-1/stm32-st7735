@@ -85,11 +85,6 @@ static const uint16_t palette_grayscale16[16] = {
     SWAP16(ST7735_COLOR565(255, 255, 255)),
 };
 
-static const uint16_t palette_grayscale2[2] = {
-    SWAP16(ST7735_COLOR565(0,   0,   0  )),
-    SWAP16(ST7735_COLOR565(255, 255, 255)),
-};
-
 
 static void ST7735_Select() {
     HAL_GPIO_WritePin(ST7735_CS_GPIO_Port, ST7735_CS_Pin, GPIO_PIN_RESET);
@@ -359,30 +354,15 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
             break;
 
         case ImageFormat_Grayscale4Rle4:
-        case ImageFormat_Grayscale1Rle7:
         {
-            const uint16_t* palette;
-            uint8_t color_mask;
-            uint8_t count_shift;
-
-            if (format == ImageFormat_Grayscale4Rle4) {
-                palette     = palette_grayscale16;
-                color_mask  = 0x0F;
-                count_shift = 4;
-            } else {
-                palette     = palette_grayscale2;
-                color_mask  = 0x01;
-                count_shift = 1;
-            }
-
             const size_t buf_size = 32;
             uint16_t     buf[buf_size];
             size_t       buf_pos = 0;
 
             for (size_t i = 0; i < data_size; ++i) {
                 uint8_t  b     = data[i];
-                uint16_t color = palette[b & color_mask];
-                size_t   count = (b >> count_shift) + 1;
+                uint16_t color = palette_grayscale16[b & 0x0F];
+                size_t   count = (b >> 4) + 1;
 
                 while (count--) {
                     buf[buf_pos++] = color;

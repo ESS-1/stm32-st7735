@@ -11,12 +11,6 @@ def rgb_to_gray16(r, g, b):
     return (gray * 15 + 127) // 255
 
 
-def rgb_to_gray2(r, g, b):
-    # ITU-R BT.601 luminance -> 0 or 1
-    gray = (299 * r + 587 * g + 114 * b) // 1000
-    return 1 if gray >= 128 else 0
-
-
 def rgb_to_rgb565_swapped(r, g, b):
     # Standard RGB565
     color565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3)
@@ -60,25 +54,8 @@ def convert(filename, fmt="raw16"):
             encoded.append(((count - 1) << 4) | value)
             i += count
 
-    elif fmt == "rle7":
-        fmt_enum = "ImageFormat_Grayscale1Rle7"
-        pixels = [rgb_to_gray2(r, g, b) for r, g, b in image.get_flattened_data()]
-        i = 0
-        while i < len(pixels):
-            value = pixels[i]
-            count = 1
-            while (
-                i + count < len(pixels)
-                and pixels[i + count] == value
-                and count < 128
-            ):
-                count += 1
-
-            encoded.append(((count - 1) << 1) | (value & 0x01))
-            i += count
-
     else:
-        print(f"Unknown format: {fmt}. Valid options: raw16, rle4, rle7", file=sys.stderr)
+        print(f"Unknown format: {fmt}. Valid options: raw16, rle4", file=sys.stderr)
         sys.exit(1)
 
     total_pixels = image.width * image.height
@@ -114,7 +91,7 @@ def convert(filename, fmt="raw16"):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print(f"Usage: {sys.argv[0]} image.png [raw16|rle4|rle7]", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} image.png [raw16|rle4]", file=sys.stderr)
         sys.exit(1)
 
     img_file = sys.argv[1]

@@ -85,7 +85,6 @@ typedef enum {
 typedef enum {
 	ImageFormat_Raw16,
 	ImageFormat_Grayscale4Rle4,
-	ImageFormat_Grayscale1Rle7,
 } ImageFormat;
 
 extern const uint8_t st7735_default_init_cmds[];
