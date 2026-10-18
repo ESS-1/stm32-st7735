@@ -2,9 +2,10 @@
 #include "gpio.h"
 #include "spi.h"
 #include "st7735.h"
-#include "malloc.h"
 #include "string.h"
 #include "st7735_config.h"
+
+#define STACK_BUFFER_SIZE_PX 32 // 32 pixels * 2 bytes = 64 bytes on stack
 
 // based on Adafruit ST7735 library for Arduino
 const uint8_t st7735_default_init_cmds[] = {
@@ -215,10 +216,10 @@ static void ST7735_WriteChar(uint16_t x, uint16_t y, uint16_t height, char ch, F
 
     ST7735_SetAddressWindow(x, y, x+width-1, y+height-1);
 
-	// Replace non-printable characters with a placeholder
+    // Replace non-printable characters with a placeholder
     if (ch < ' ' || ch > '~') {
         ch = '?';
-	}
+    }
 
     for(i = 0; i < height; i++) {
         b = font.data[(ch - 32) * font.height + i];
@@ -286,54 +287,37 @@ void ST7735_WriteStringNoWrap(uint16_t x, uint16_t y, uint16_t max_height, const
 }
 
 void ST7735_FillRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
-    // clipping
-    if((x >= ST7735_WIDTH) || (y >= ST7735_HEIGHT)) return;
-    if((x + w - 1) >= ST7735_WIDTH) w = ST7735_WIDTH - x;
-    if((y + h - 1) >= ST7735_HEIGHT) h = ST7735_HEIGHT - y;
+    // Clipping
+    if ((x >= ST7735_WIDTH) || (y >= ST7735_HEIGHT)) return;
+    if ((x + w - 1) >= ST7735_WIDTH) w = ST7735_WIDTH - x;
+    if ((y + h - 1) >= ST7735_HEIGHT) h = ST7735_HEIGHT - y;
+    if (w == 0 || h == 0) return;
+
+    uint16_t color_sw = SWAP16(color);
+    uint32_t total_pixels = (uint32_t)w * h;
+
+    // Pre-fill a small stack buffer with the target color
+    uint16_t chunk_buf[STACK_BUFFER_SIZE_PX];
+    for (uint16_t i = 0; i < STACK_BUFFER_SIZE_PX; ++i) {
+        chunk_buf[i] = color_sw;
+    }
 
     ST7735_Select();
-    ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
-
-    uint8_t data[] = { color >> 8, color & 0xFF };
+    ST7735_SetAddressWindow(x, y, x + w - 1, y + h - 1);
     HAL_GPIO_WritePin(ST7735_DC_GPIO_Port, ST7735_DC_Pin, GPIO_PIN_SET);
-    for(y = h; y > 0; y--) {
-        for(x = w; x > 0; x--) {
-            HAL_SPI_Transmit(&ST7735_SPI_PORT, data, sizeof(data), HAL_MAX_DELAY);
-        }
+
+    // Stream pixels in continuous chunks
+    while (total_pixels > 0) {
+        uint16_t chunk_pixels = (total_pixels > STACK_BUFFER_SIZE_PX) ? STACK_BUFFER_SIZE_PX : (uint16_t)total_pixels;
+        HAL_SPI_Transmit(&ST7735_SPI_PORT, (uint8_t*)chunk_buf, chunk_pixels * sizeof(uint16_t), HAL_MAX_DELAY);
+        total_pixels -= chunk_pixels;
     }
 
     ST7735_Unselect();
 }
 
-void ST7735_FillRectangleFast(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
-    // clipping
-    if((x >= ST7735_WIDTH) || (y >= ST7735_HEIGHT)) return;
-    if((x + w - 1) >= ST7735_WIDTH) w = ST7735_WIDTH - x;
-    if((y + h - 1) >= ST7735_HEIGHT) h = ST7735_HEIGHT - y;
-
-    ST7735_Select();
-    ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
-
-    // Prepare whole line in a single buffer
-    uint8_t pixel[] = { color >> 8, color & 0xFF };
-    uint8_t *line = malloc(w * sizeof(pixel));
-    for(x = 0; x < w; ++x)
-    	memcpy(line + x * sizeof(pixel), pixel, sizeof(pixel));
-
-    HAL_GPIO_WritePin(ST7735_DC_GPIO_Port, ST7735_DC_Pin, GPIO_PIN_SET);
-    for(y = h; y > 0; y--)
-        HAL_SPI_Transmit(&ST7735_SPI_PORT, line, w * sizeof(pixel), HAL_MAX_DELAY);
-
-    free(line);
-    ST7735_Unselect();
-}
-
 void ST7735_FillScreen(uint16_t color) {
     ST7735_FillRectangle(0, 0, ST7735_WIDTH, ST7735_HEIGHT, color);
-}
-
-void ST7735_FillScreenFast(uint16_t color) {
-    ST7735_FillRectangleFast(0, 0, ST7735_WIDTH, ST7735_HEIGHT, color);
 }
 
 void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data) {
@@ -355,9 +339,8 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
 
         case ImageFormat_Grayscale4Rle4:
         {
-            const size_t buf_size = 32;
-            uint16_t     buf[buf_size];
-            size_t       buf_pos = 0;
+            uint16_t buf[STACK_BUFFER_SIZE_PX];
+            size_t   buf_pos = 0;
 
             for (size_t i = 0; i < data_size; ++i) {
                 uint8_t  b     = data[i];
@@ -366,7 +349,7 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
 
                 while (count--) {
                     buf[buf_pos++] = color;
-                    if (buf_pos >= buf_size) {
+                    if (buf_pos >= STACK_BUFFER_SIZE_PX) {
                         ST7735_WriteData((uint8_t*)buf, sizeof(buf));
                         buf_pos = 0;
                     }
@@ -387,6 +370,63 @@ void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
     ST7735_Unselect();
 }
 
+void ST7735_DrawBarcode(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t scale_x, uint16_t scale_y,
+    uint16_t bar_color, uint16_t bg_color, const uint8_t* data)
+{
+    uint16_t scaled_w = w * scale_x;
+    uint16_t scaled_h = h * scale_y;
+
+    if ((x >= ST7735_WIDTH) || (y >= ST7735_HEIGHT)) return;
+    if ((x + scaled_w - 1) >= ST7735_WIDTH) return;
+    if ((y + scaled_h - 1) >= ST7735_HEIGHT) return;
+
+    ST7735_Select();
+    ST7735_SetAddressWindow(x, y, x + scaled_w - 1, y + scaled_h - 1);
+
+    uint16_t bg_color_sw   = SWAP16(bg_color);
+    uint16_t bar_color_sw  = SWAP16(bar_color);
+    uint16_t bytes_per_row = (w + 7) >> 3;
+
+    uint16_t chunk_buf[STACK_BUFFER_SIZE_PX];
+    uint16_t chunk_buf_idx = 0;
+
+    // Iterate through each module row of the QR matrix
+    for (uint16_t row = 0; row < h; ++row) {
+        uint16_t row_offset = row * bytes_per_row;
+
+        // Vertical scaling: repeat the same module row 'scale_y' times
+        for (uint16_t sy = 0; sy < scale_y; ++sy) {
+            chunk_buf_idx = 0;
+
+            // Decode and scale row horizontally
+            for (uint16_t col = 0; col < w; ++col) {
+                uint16_t byte_idx = row_offset + (col >> 3);
+                uint8_t bit_mask = 0x80 >> (col & 7);
+                bool is_dark = (data[byte_idx] & bit_mask) != 0;
+                uint16_t color = is_dark ? bar_color_sw : bg_color_sw;
+
+                // Duplicate module pixels horizontally according to 'scale_x'
+                for (uint16_t sx = 0; sx < scale_x; ++sx) {
+                    chunk_buf[chunk_buf_idx++] = color;
+
+                    // If the chunk buffer is full, flush it to the display via SPI
+                    if (chunk_buf_idx >= STACK_BUFFER_SIZE_PX) {
+                        ST7735_WriteData((uint8_t*)chunk_buf, STACK_BUFFER_SIZE_PX * sizeof(uint16_t));
+                        chunk_buf_idx = 0;
+                    }
+                }
+            }
+
+            // Flush remaining pixels at the end of the row
+            if (chunk_buf_idx > 0) {
+                ST7735_WriteData((uint8_t*)chunk_buf, chunk_buf_idx * sizeof(uint16_t));
+            }
+        }
+    }
+
+    ST7735_Unselect();
+}
+
 void ST7735_InvertColors(bool invert) {
     ST7735_Select();
     ST7735_WriteCommand(invert ? ST7735_INVON : ST7735_INVOFF);
@@ -395,8 +435,8 @@ void ST7735_InvertColors(bool invert) {
 
 void ST7735_SetGamma(GammaDef gamma)
 {
-	ST7735_Select();
-	ST7735_WriteCommand(ST7735_GAMSET);
-	ST7735_WriteData((uint8_t *) &gamma, sizeof(gamma));
-	ST7735_Unselect();
+    ST7735_Select();
+    ST7735_WriteCommand(ST7735_GAMSET);
+    ST7735_WriteData((uint8_t *) &gamma, sizeof(gamma));
+    ST7735_Unselect();
 }

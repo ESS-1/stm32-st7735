@@ -63,10 +63,10 @@
 #define ST7735_GMCTRN1 0xE1
 
 // Color definitions
-#define	ST7735_BLACK   0x0000
-#define	ST7735_BLUE    0x001F
-#define	ST7735_RED     0xF800
-#define	ST7735_GREEN   0x07E0
+#define ST7735_BLACK   0x0000
+#define ST7735_BLUE    0x001F
+#define ST7735_RED     0xF800
+#define ST7735_GREEN   0x07E0
 #define ST7735_CYAN    0x07FF
 #define ST7735_MAGENTA 0xF81F
 #define ST7735_YELLOW  0xFFE0
@@ -76,15 +76,15 @@
 #define ST7735_DELAY   0x80
 
 typedef enum {
-	GAMMA_10 = 0x01,
-	GAMMA_25 = 0x02,
-	GAMMA_22 = 0x04,
-	GAMMA_18 = 0x08
+    GAMMA_10 = 0x01,
+    GAMMA_25 = 0x02,
+    GAMMA_22 = 0x04,
+    GAMMA_18 = 0x08
 } GammaDef;
 
 typedef enum {
-	ImageFormat_Raw16,
-	ImageFormat_Grayscale4Rle4,
+    ImageFormat_Raw16,
+    ImageFormat_Grayscale4Rle4,
 } ImageFormat;
 
 extern const uint8_t st7735_default_init_cmds[];
@@ -104,11 +104,11 @@ void ST7735_DrawPixel(uint16_t x, uint16_t y, uint16_t color);
 void ST7735_WriteString(uint16_t x, uint16_t y, const char* str, FontDef font, uint16_t color, uint16_t bgcolor);
 void ST7735_WriteStringNoWrap(uint16_t x, uint16_t y, uint16_t max_height, const char* str, FontDef font, uint16_t color, uint16_t bgcolor);
 void ST7735_FillRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
-void ST7735_FillRectangleFast(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
 void ST7735_FillScreen(uint16_t color);
-void ST7735_FillScreenFast(uint16_t color);
 void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data);
 void ST7735_DrawCompressedImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, ImageFormat format, const uint8_t* data, size_t data_size);
+void ST7735_DrawBarcode(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t scale_x, uint16_t scale_y,
+    uint16_t bar_color, uint16_t bg_color, const uint8_t* data);
 void ST7735_InvertColors(bool invert);
 void ST7735_SetGamma(GammaDef gamma);
 
