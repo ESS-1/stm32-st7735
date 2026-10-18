@@ -440,3 +440,19 @@ void ST7735_SetGamma(GammaDef gamma)
     ST7735_WriteData((uint8_t *) &gamma, sizeof(gamma));
     ST7735_Unselect();
 }
+
+void ST7735_Batch_Begin(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+{
+    ST7735_Select();
+    ST7735_SetAddressWindow(x, y, x + w - 1, y + h - 1);
+}
+
+void ST7735_Batch_Draw(const uint16_t* data, size_t data_size_pixels)
+{
+    ST7735_WriteData((uint8_t*)data, data_size_pixels * sizeof(uint16_t));
+}
+
+void ST7735_Batch_End(void)
+{
+    ST7735_Unselect();
+}

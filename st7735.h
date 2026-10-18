@@ -112,6 +112,10 @@ void ST7735_DrawBarcode(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t
 void ST7735_InvertColors(bool invert);
 void ST7735_SetGamma(GammaDef gamma);
 
+void ST7735_Batch_Begin(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+void ST7735_Batch_Draw(const uint16_t* data, size_t data_size);
+void ST7735_Batch_End();
+
 #ifdef __cplusplus
 }
 #endif
