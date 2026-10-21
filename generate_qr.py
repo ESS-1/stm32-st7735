@@ -28,10 +28,19 @@ def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: i
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"qrencode failed: {e.stderr.strip()}")
 
-    raw_lines = [line.strip() for line in res.stdout.splitlines() if line.strip()]
+    raw_lines = [line.rstrip('\r\n') for line in res.stdout.splitlines()]
+    raw_lines = [line for line in raw_lines if len(line) > 0]
+
     modules_count = len(raw_lines)
     if modules_count == 0:
         raise ValueError("Empty output from qrencode!")
+
+    expected_len = modules_count * 2
+    for idx, line in enumerate(raw_lines):
+        if len(line) != expected_len:
+            raise ValueError(
+                f"Row {idx} has invalid length {len(line)}, expected {expected_len}!"
+            )
 
     # Check if raw QR matrix exceeds requested limit
     scale = None
