@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-
-import sys
-import os
 import argparse
-import qrcode
-from PIL import Image
+import os
+import subprocess
+import sys
 
 def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: int = None):
     # Ensure target directory exists (e.g., 'build/')
@@ -12,19 +10,28 @@ def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: i
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
-    # Create QR code
-    qr = qrcode.QRCode(
-        version=None,  # Auto-fit smallest version
-        error_correction=qrcode.constants.ERROR_CORRECT_M, # Medium error correction (~15%)
-        box_size=1,    # Pixel size of each module
-        border=0,      # No quiet zone padding inside raw matrix
-    )
+    # Generate ASCII QR matrix (Medium ECC, 0 margin)
+    try:
+        res = subprocess.run(
+            ['qrencode', '-s', '1', '-l', 'M', '-m', '0', '-t', 'ASCII', '-o', '-'],
+            input=url,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            "Command 'qrencode' not found! Please install it via pacman:\n"
+            "  MSYS2 UCRT64: pacman -S mingw-w64-ucrt-x86_64-qrencode\n"
+            "  Linux/Arch:   pacman -S qrencode"
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"qrencode failed: {e.stderr.strip()}")
 
-    qr.add_data(url)
-    qr.make(fit=True)
-
-    matrix = qr.get_matrix()
-    modules_count = len(matrix)  # Matrix width/height in modules (quads)
+    raw_lines = [line.strip() for line in res.stdout.splitlines() if line.strip()]
+    modules_count = len(raw_lines)
+    if modules_count == 0:
+        raise ValueError("Empty output from qrencode!")
 
     # Check if raw QR matrix exceeds requested limit
     scale = None
@@ -46,19 +53,15 @@ def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: i
     # ==========================================
     # GENERATE PNG IMAGE
     # ==========================================
-    base_img = qr.make_image(fill_color="black", back_color="white").convert("1")
-
-    if scale is not None:
-        scaled_width = modules_count * scale
-        scaled_height = modules_count * scale
-        # Scale using Nearest Neighbor to keep sharp square modules
-        scaled_img = base_img.resize((scaled_width, scaled_height), resample=Image.NEAREST)
-    else:
-        scaled_width = modules_count
-        scaled_height = modules_count
-        scaled_img = base_img
-
-    scaled_img.save(png_filename, format="PNG")
+    png_scale = str(scale if scale is not None else 1)
+    subprocess.run(
+        ['qrencode', '-s', png_scale, '-l', 'M', '-m', '0', '-t', 'PNG', '-o', png_filename],
+        input=url,
+        text=True,
+        check=True,
+    )
+    scaled_width = modules_count * (scale if scale is not None else 1)
+    scaled_height = scaled_width
 
     # ==========================================
     # GENERATE C SOURCE / HEADER
@@ -69,8 +72,9 @@ def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: i
     # Pack bits into byte array (MSB first)
     byte_array = bytearray(total_bytes)
     for y in range(modules_count):
+        row_str = raw_lines[y]
         for x in range(modules_count):
-            if matrix[y][x]:  # Dark module
+            if row_str[2 * x : 2 * x + 2] == '##': # '##' is black module
                 byte_idx = y * bytes_per_row + (x // 8)
                 bit_idx = 7 - (x % 8)
                 byte_array[byte_idx] |= (1 << bit_idx)
@@ -107,7 +111,7 @@ def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: i
 
         f.write("};\n")
 
-    print(f"QR code artifacts generated successfully:")
+    print("QR code artifacts generated successfully:")
     print(f"  - Header:    {header_filename}")
     print(f"  - Source:    {source_filename}")
     print(f"  - PNG Image: {png_filename} ({scaled_width}x{scaled_height} px)")
