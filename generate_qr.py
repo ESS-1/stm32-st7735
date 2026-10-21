@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: int = None):
+def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: int = None, section: str = None):
     # Ensure target directory exists (e.g., 'build/')
     output_dir = os.path.dirname(output_prefix)
     if output_dir:
@@ -96,12 +96,13 @@ def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: i
         f.write(f"extern const uint8_t {symbol_name}_data[{total_bytes}];\n")
 
     # Source file (.c)
+    section_attr = f'__attribute__((section("{section}"))) ' if section else ""
     with open(source_filename, "w", encoding="utf-8") as f:
         f.write("/* Auto-generated QR code data */\n")
         f.write(f'#include "{os.path.basename(header_filename)}"\n')
         f.write('\n')
         f.write("/* Packed QR matrix: 1 bit per module (1 = black, 0 = white), MSB first */\n")
-        f.write(f"const uint8_t {symbol_name}_data[{total_bytes}] = {{\n")
+        f.write(f"{section_attr}const uint8_t {symbol_name}_data[{total_bytes}] = {{\n")
 
         for y in range(modules_count):
             f.write("    ")
@@ -119,6 +120,8 @@ def generate_qr_code(url: str, output_prefix: str, symbol_name: str, max_size: i
     print(f"  - Array size:{total_bytes} bytes")
     if scale is not None:
         print(f"  - Scale:     {scale}x")
+    if section:
+        print(f"  - Section:   {section}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -127,12 +130,13 @@ def main():
     parser.add_argument("--url", required=True, help="URL payload")
     parser.add_argument("--max-size", type=int, default=None, help="Max boundary in pixels (optional; if not provided, no scaling)")
     parser.add_argument("--out-prefix", default="qr_data", help="Output filename prefix for .h, .c, and .png files")
-    parser.add_argument("--symbol", default="g_qr_code", help="C struct variable name")
+    parser.add_argument("--symbol", default="g_qr_code", help="C array variable name prefix")
+    parser.add_argument("--section", default=None, help="Optional ELF section name")
 
     args = parser.parse_args()
 
     try:
-        generate_qr_code(args.url, args.out_prefix, args.symbol, args.max_size)
+        generate_qr_code(args.url, args.out_prefix, args.symbol, args.max_size, args.section)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
